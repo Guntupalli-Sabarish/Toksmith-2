@@ -7,9 +7,9 @@ from contextlib import asynccontextmanager
 from loguru import logger
 import sys
 
-from app.core.config import settings
-from app.api.route import router
-# from app.database import init_db
+from src.config import settings
+from src.api.routes import router
+from src.database import init_db
 
 
 @asynccontextmanager
@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
     
     # Initialize database
     try:
-        # init_db()
+        init_db()
         logger.info("Database initialized")
     except Exception as e:
         logger.error(f"Database initialization failed: {str(e)}")
