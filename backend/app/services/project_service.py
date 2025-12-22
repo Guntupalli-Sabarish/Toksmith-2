@@ -387,7 +387,7 @@ class ProjectService:
         tts_service: "TTSService"
     ) -> ProjectResponse:
         """
-        Generate audio for the project's script using TTS
+        Generate audio for the project's script using TTS and upload to Supabase Storage
         
         Args:
             project_id: Project ID
@@ -395,9 +395,10 @@ class ProjectService:
             tts_service: TTS Service instance
             
         Returns:
-            Updated ProjectResponse with audio file paths
+            Updated ProjectResponse with audio URLs
         """
         from app.models.script import Script, DialogueLine
+        from app.schemas.storage import FileType
         
         try:
             # Get project
@@ -429,36 +430,73 @@ class ProjectService:
                 characters=script_data.get("characters", [])
             )
             
-            # Generate audio
+            # Generate audio bytes
             logger.info(f"Generating audio for project: {project_id}")
-            output_dir = f"static/audio/{project_id}"
-            updated_script = await tts_service.generate_script_audio(script, output_dir=output_dir)
+            audio_results = await tts_service.generate_script_audio_bytes(script)
             
-            # Update script_data with audio file paths
+            # Upload each audio file to Supabase Storage
+            audio_urls = []
+            updated_lines = list(script.lines)
+            
+            for line_index, audio_bytes, filename in audio_results:
+                try:
+                    # Upload to Supabase Storage
+                    file_path = f"{user_id}/{project_id}/audio/{filename}"
+                    bucket_name = settings.storage_bucket_audio
+                    
+                    storage = self.client.storage.from_(bucket_name)
+                    storage.upload(
+                        path=file_path,
+                        file=audio_bytes,
+                        file_options={"content-type": "audio/mpeg"}
+                    )
+                    
+                    # Get public URL
+                    public_url = storage.get_public_url(file_path)
+                    audio_urls.append(public_url)
+                    
+                    # Update the line with the URL
+                    if line_index < len(updated_lines):
+                        updated_lines[line_index].audio_file_path = public_url
+                    
+                    logger.info(f"Uploaded audio {line_index}: {public_url}")
+                    
+                except Exception as upload_error:
+                    logger.error(f"Failed to upload audio for line {line_index}: {upload_error}")
+                    # Continue with other files
+            
+            # Combine all audio URLs for the main audio_url field
+            # Use the first audio or create a combined reference
+            main_audio_url = audio_urls[0] if audio_urls else None
+            
+            # Update script_data with audio URLs
             updated_script_data = {
-                "id": updated_script.id,
-                "background": updated_script.background,
-                "characters": updated_script.characters,
+                "id": script.id,
+                "background": script.background,
+                "characters": script.characters,
                 "dialogue_lines": [
                     {
-                        "speaker": line.speaker,
-                        "text": line.text,
-                        "audio_file_path": line.audio_file_path,
-                        "start_time": line.start_time,
-                        "duration": line.duration
+                        "speaker": updated_lines[i].speaker if i < len(updated_lines) else line.speaker,
+                        "text": updated_lines[i].text if i < len(updated_lines) else line.text,
+                        "audio_file_path": updated_lines[i].audio_file_path if i < len(updated_lines) else "",
+                        "start_time": updated_lines[i].start_time if i < len(updated_lines) else 0,
+                        "duration": updated_lines[i].duration if i < len(updated_lines) else 0
                     }
-                    for line in updated_script.lines
+                    for i, line in enumerate(script_data.get("dialogue_lines", script_data.get("lines", [])))
                 ],
                 "estimated_duration": script_data.get("estimated_duration", 0),
-                "word_count": script_data.get("word_count", 0)
+                "word_count": script_data.get("word_count", 0),
+                "audio_urls": audio_urls  # Store all audio URLs
             }
             
+            # Update project with audio URL and script data
             response = self.client.table("projects").update({
                 "status": ProjectStatus.AUDIO_GENERATED.value,
-                "script_data": updated_script_data
+                "script_data": updated_script_data,
+                "audio_url": main_audio_url  # Store first audio URL as main
             }).eq("id", project_id).execute()
             
-            logger.info(f"Audio generated for project: {project_id}")
+            logger.info(f"Audio generated and uploaded for project: {project_id}")
             return self._map_to_response(response.data[0])
             
         except ValueError:

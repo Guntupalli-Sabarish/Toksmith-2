@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Video, Download, Share2, Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { Video, Download, Share2, Play, Pause, Volume2, VolumeX, Music } from "lucide-react";
 import { useState, useRef } from "react";
 
 interface VideoOutputProps {
@@ -44,6 +44,59 @@ export function VideoOutput({ videoUrl, audioUrl, thumbnailUrl }: VideoOutputPro
       document.body.removeChild(link);
     }
   };
+
+  const handleAudioDownload = () => {
+    if (audioUrl) {
+      const link = document.createElement("a");
+      link.href = audioUrl;
+      link.download = "audio.mp3";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  // Show audio-only view when no video but has audio
+  if (!videoUrl && audioUrl) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Music className="h-4 w-4 text-primary" />
+            Audio Generated
+          </CardTitle>
+          <CardDescription>Your audio is ready. Video generation is next.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Audio Player */}
+          <div className="bg-muted/50 rounded-lg p-6">
+            <div className="flex items-center justify-center mb-4">
+              <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
+                <Music className="h-10 w-10 text-primary" />
+              </div>
+            </div>
+            <audio
+              src={audioUrl}
+              controls
+              className="w-full"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-center gap-2">
+            <Button size="sm" onClick={handleAudioDownload}>
+              <Download className="h-4 w-4 mr-2" />
+              Download Audio
+            </Button>
+          </div>
+
+          <p className="text-xs text-center text-muted-foreground">
+            Generate video to combine audio with visuals
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!videoUrl) {
     return (

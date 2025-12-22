@@ -162,7 +162,7 @@ export default function ProjectDetailPage({
               </TabsTrigger>
               <TabsTrigger value="output" className="relative">
                 Output
-                {project.video_url && (
+                {(project.video_url || project.audio_url) && (
                   <span className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full" />
                 )}
               </TabsTrigger>
