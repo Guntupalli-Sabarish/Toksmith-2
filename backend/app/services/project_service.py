@@ -511,6 +511,128 @@ class ProjectService:
             logger.error(f"Failed to generate audio: {str(e)}")
             raise Exception(f"Failed to generate audio: {str(e)}")
     
+    async def generate_video(
+        self,
+        project_id: str,
+        user_id: str,
+        background: str = "minecraft-parkour"
+    ) -> ProjectResponse:
+        """
+        Generate video for the project by combining audio with background and captions.
+        
+        Args:
+            project_id: Project ID
+            user_id: User ID
+            background: Background video preset or path
+            
+        Returns:
+            Updated ProjectResponse with video URL
+        """
+        from app.utils.ffmpeg_utils import concatenate_audio_files
+        from app.utils.transformations import create_caption_file
+        from app.services.video_service import merge_audio_and_background
+        import tempfile
+        import os
+        
+        try:
+            # Get project
+            project = await self.get_project(project_id, user_id)
+            if not project:
+                raise ValueError("Project not found")
+            
+            if project.status != ProjectStatus.AUDIO_GENERATED:
+                raise ValueError("Audio must be generated before video creation")
+            
+            script_data = project.script_data
+            if not script_data:
+                raise ValueError("No script data found")
+            
+            logger.info(f"Generating video for project: {project_id}")
+            
+            # Create temp directory for local processing
+            with tempfile.TemporaryDirectory(prefix="toksmith_video_") as tmp_dir:
+                # Download audio files from Supabase and concatenate
+                audio_urls = script_data.get("audio_urls", [])
+                
+                if not audio_urls:
+                    raise ValueError("No audio files found in project")
+                
+                # Download audio files
+                local_audio_dir = os.path.join(tmp_dir, "audio")
+                os.makedirs(local_audio_dir, exist_ok=True)
+                
+                import httpx
+                for i, url in enumerate(audio_urls):
+                    async with httpx.AsyncClient() as client:
+                        response = await client.get(url)
+                        if response.status_code == 200:
+                            audio_path = os.path.join(local_audio_dir, f"audio_{i:03d}.mp3")
+                            with open(audio_path, "wb") as f:
+                                f.write(response.content)
+                
+                # Concatenate audio files
+                concatenated_audio = os.path.join(tmp_dir, "combined_audio.mp3")
+                concatenate_audio_files(local_audio_dir, concatenated_audio)
+                
+                # Create caption file
+                caption_file = create_caption_file(
+                    script_data=script_data,
+                    project_id=project_id,
+                    output_dir=tmp_dir
+                )
+                
+                # Generate video
+                video_output_dir = os.path.join(tmp_dir, "output")
+                os.makedirs(video_output_dir, exist_ok=True)
+                
+                video_path = merge_audio_and_background(
+                    background_video=background,
+                    audio_file=concatenated_audio,
+                    captions_srt=caption_file if caption_file else None,
+                    project_id=project_id,
+                    output_dir=video_output_dir
+                )
+                
+                # Upload video to Supabase Storage
+                with open(video_path, "rb") as f:
+                    video_bytes = f.read()
+                
+                video_filename = f"{project_id}_final.mp4"
+                video_storage_path = f"{user_id}/{project_id}/video/{video_filename}"
+                
+                bucket_name = settings.storage_bucket_videos
+                storage = self.client.storage.from_(bucket_name)
+                storage.upload(
+                    path=video_storage_path,
+                    file=video_bytes,
+                    file_options={"content-type": "video/mp4"}
+                )
+                
+                video_url = storage.get_public_url(video_storage_path)
+                
+                logger.info(f"Video uploaded: {video_url}")
+            
+            # Update project with video URL
+            response = self.client.table("projects").update({
+                "status": ProjectStatus.VIDEO_GENERATED.value,
+                "video_url": video_url
+            }).eq("id", project_id).execute()
+            
+            logger.info(f"Video generated for project: {project_id}")
+            return self._map_to_response(response.data[0])
+            
+        except ValueError:
+            raise
+        except Exception as e:
+            # Update status to failed
+            self.client.table("projects").update({
+                "status": ProjectStatus.FAILED.value,
+                "error_message": str(e)
+            }).eq("id", project_id).execute()
+            
+            logger.error(f"Failed to generate video: {str(e)}")
+            raise Exception(f"Failed to generate video: {str(e)}")
+    
     def _detect_source_type(self, url: str) -> Optional[SourceType]:
         """Detect source type from URL"""
         url_lower = url.lower()

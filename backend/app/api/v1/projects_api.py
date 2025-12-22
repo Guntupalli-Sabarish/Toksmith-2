@@ -385,3 +385,70 @@ async def generate_audio(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate audio"
         )
+
+
+@router.post(
+    "/{project_id}/generate-video",
+    response_model=ProjectResponse,
+    summary="Generate video",
+    description="Generate video from audio and background"
+)
+async def generate_video(
+    project_id: str,
+    background: str = Query("minecraft-parkour", description="Background video preset"),
+    current_user: CurrentUser = Depends(get_current_user),
+    project_service: ProjectService = Depends(get_project_service)
+):
+    """
+    Generate video for the project.
+    
+    This will:
+    1. Download and concatenate all audio files
+    2. Create caption file from script
+    3. Merge background video with audio and captions
+    4. Upload final video to storage
+    
+    Requires the project to have generated audio.
+    
+    Available backgrounds: minecraft-parkour, subway-surfers, satisfying, nature, abstract, gaming
+    """
+    try:
+        # Get project
+        project = await project_service.get_project(project_id, current_user.id)
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found"
+            )
+        
+        # Check if audio exists
+        if project.status != ProjectStatus.AUDIO_GENERATED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Audio must be generated first"
+            )
+        
+        logger.info(f"Generating video for project: {project_id} with background: {background}")
+        
+        # Generate video using project service
+        updated_project = await project_service.generate_video(
+            project_id=project_id,
+            user_id=current_user.id,
+            background=background
+        )
+        
+        return updated_project
+        
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Video generation error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate video"
+        )

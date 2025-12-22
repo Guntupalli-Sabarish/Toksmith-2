@@ -46,5 +46,10 @@ class Settings:
     
     # Database
     database_url: str = os.getenv("DATABASE_URL", "")
+    
+    # Video Processing
+    ffmpeg_path: str = os.getenv("FFMPEG_PATH", "ffmpeg")
+    ffprobe_path: str = os.getenv("FFPROBE_PATH", "ffprobe")
+    local_storage_path: str = os.getenv("LOCAL_STORAGE_PATH", "static")
 
 settings = Settings()
