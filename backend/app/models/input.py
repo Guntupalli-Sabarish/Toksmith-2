@@ -14,6 +14,7 @@ class InputSource(str, Enum):
     STACKOVERFLOW = "stackoverflow"
     SCRIPT = "script"
     PODCAST = "podcast"
+    CUSTOM = "custom"
 
 
 class Status(str, Enum):

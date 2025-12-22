@@ -1,5 +1,5 @@
 """
-Main FastAPI application for Input Layer
+Main FastAPI application for TokSmith - AI Video Generation Platform
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,28 +9,28 @@ import sys
 
 from app.core.config import settings
 from app.api.route import router
-# from app.database import init_db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup/shutdown events"""
     # Startup
-    logger.info("Starting ToksMith Input Layer...")
+    logger.info("Starting TokSmith API...")
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Log Level: {settings.log_level}")
     
-    # Initialize database
+    # Initialize Supabase connection
     try:
-        # init_db()
-        logger.info("Database initialized")
+        from app.core.supabase import get_supabase
+        client = get_supabase()
+        logger.info("Supabase client initialized successfully")
     except Exception as e:
-        logger.error(f"Database initialization failed: {str(e)}")
+        logger.error(f"Supabase initialization failed: {str(e)}")
     
     yield
     
     # Shutdown
-    logger.info("Shutting down ToksMith Input Layer...")
+    logger.info("Shutting down TokSmith API...")
 
 
 # Configure logging
@@ -51,10 +51,28 @@ logger.add(
 
 # Create FastAPI app
 app = FastAPI(
-    title="ToksMith Input Layer",
-    description="API for scraping content from various sources (Reddit, Twitter, StackOverflow)",
-    version="0.1.0",
-    lifespan=lifespan
+    title="TokSmith API",
+    description="""
+    AI-Powered Video Generation Platform API
+    
+    ## Features
+    - **Authentication**: User signup, login, and token management with Supabase Auth
+    - **Projects**: Create and manage video generation projects
+    - **Content Scraping**: Scrape content from Reddit, Twitter, StackOverflow
+    - **Script Generation**: AI-powered script generation using Gemini
+    - **Storage**: File upload and management with Supabase Storage
+    - **Credits**: Usage-based credit system
+    
+    ## Authentication
+    All endpoints (except /auth/*) require a valid JWT token in the Authorization header:
+    ```
+    Authorization: Bearer <your_access_token>
+    ```
+    """,
+    version="1.0.0",
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
 # CORS middleware
@@ -74,17 +92,18 @@ app.include_router(router)
 async def root():
     """Root endpoint"""
     return {
-        "service": "ToksMith Input Layer",
-        "version": "0.1.0",
+        "service": "TokSmith API",
+        "version": "1.0.0",
         "status": "running",
-        "docs": "/docs"
+        "docs": "/docs",
+        "redoc": "/redoc"
     }
 
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
-        "src.main:app",
+        "app.main:app",
         host=settings.api_host,
         port=settings.api_port,
         reload=(settings.environment == "development")
