@@ -15,6 +15,7 @@ from app.schemas.project import (
 )
 from app.services.project_service import get_project_service, ProjectService
 from app.services.user_service import get_user_service, UserService
+from app.services.tts_service import TTSService, get_tts_service
 from app.core.dependencies import get_current_user, CurrentUser
 
 
@@ -319,4 +320,68 @@ async def generate_full(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to run generation pipeline"
+        )
+
+
+@router.post(
+    "/{project_id}/generate-audio",
+    response_model=ProjectResponse,
+    summary="Generate audio",
+    description="Generate audio for the script using TTS"
+)
+async def generate_audio(
+    project_id: str,
+    current_user: CurrentUser = Depends(get_current_user),
+    project_service: ProjectService = Depends(get_project_service),
+    tts_service: TTSService = Depends(get_tts_service)
+):
+    """
+    Generate audio for the project script using TTS.
+    
+    This will:
+    1. Get the project's script data
+    2. Generate audio for each dialogue line using Hume AI
+    3. Update the project with audio file paths
+    
+    Requires the project to have a generated script.
+    """
+    try:
+        # Get project
+        project = await project_service.get_project(project_id, current_user.id)
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found"
+            )
+        
+        # Check if script exists
+        if not project.script_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Script must be generated first"
+            )
+        
+        logger.info(f"Generating audio for project: {project_id}")
+        
+        # Generate audio using project service
+        updated_project = await project_service.generate_audio(
+            project_id=project_id,
+            user_id=current_user.id,
+            tts_service=tts_service
+        )
+        
+        return updated_project
+        
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Audio generation error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate audio"
         )

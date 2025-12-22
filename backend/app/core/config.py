@@ -34,6 +34,9 @@ class Settings:
 
     # Gemini
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
+    
+    # Hume AI (TTS)
+    hume_api_key: str = os.getenv("HUME_API_KEY", "")
 
     # App Settings
     environment: str = os.getenv("ENVIRONMENT", "development")

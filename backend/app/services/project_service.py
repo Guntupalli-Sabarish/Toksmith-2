@@ -380,6 +380,99 @@ class ProjectService:
             logger.error(f"Failed to generate script: {str(e)}")
             raise Exception(f"Failed to generate script: {str(e)}")
     
+    async def generate_audio(
+        self,
+        project_id: str,
+        user_id: str,
+        tts_service: "TTSService"
+    ) -> ProjectResponse:
+        """
+        Generate audio for the project's script using TTS
+        
+        Args:
+            project_id: Project ID
+            user_id: User ID
+            tts_service: TTS Service instance
+            
+        Returns:
+            Updated ProjectResponse with audio file paths
+        """
+        from app.models.script import Script, DialogueLine
+        
+        try:
+            # Get project
+            project = await self.get_project(project_id, user_id)
+            if not project:
+                raise ValueError("Project not found")
+            
+            if not project.script_data:
+                raise ValueError("No script available. Generate script first.")
+            
+            script_data = project.script_data
+            
+            # Reconstruct Script object from stored data
+            lines = [
+                DialogueLine(
+                    speaker=line.get("speaker", "Narrator"),
+                    text=line.get("text", ""),
+                    audio_file_path=line.get("audio_file_path", ""),
+                    start_time=line.get("start_time", 0),
+                    duration=line.get("duration", 0)
+                )
+                for line in script_data.get("dialogue_lines", script_data.get("lines", []))
+            ]
+            
+            script = Script(
+                id=script_data.get("id", f"script_{project_id}"),
+                lines=lines,
+                background=script_data.get("background", "minecraft-parkour"),
+                characters=script_data.get("characters", [])
+            )
+            
+            # Generate audio
+            logger.info(f"Generating audio for project: {project_id}")
+            output_dir = f"static/audio/{project_id}"
+            updated_script = await tts_service.generate_script_audio(script, output_dir=output_dir)
+            
+            # Update script_data with audio file paths
+            updated_script_data = {
+                "id": updated_script.id,
+                "background": updated_script.background,
+                "characters": updated_script.characters,
+                "dialogue_lines": [
+                    {
+                        "speaker": line.speaker,
+                        "text": line.text,
+                        "audio_file_path": line.audio_file_path,
+                        "start_time": line.start_time,
+                        "duration": line.duration
+                    }
+                    for line in updated_script.lines
+                ],
+                "estimated_duration": script_data.get("estimated_duration", 0),
+                "word_count": script_data.get("word_count", 0)
+            }
+            
+            response = self.client.table("projects").update({
+                "status": ProjectStatus.AUDIO_GENERATED.value,
+                "script_data": updated_script_data
+            }).eq("id", project_id).execute()
+            
+            logger.info(f"Audio generated for project: {project_id}")
+            return self._map_to_response(response.data[0])
+            
+        except ValueError:
+            raise
+        except Exception as e:
+            # Update status to failed
+            self.client.table("projects").update({
+                "status": ProjectStatus.FAILED.value,
+                "error_message": str(e)
+            }).eq("id", project_id).execute()
+            
+            logger.error(f"Failed to generate audio: {str(e)}")
+            raise Exception(f"Failed to generate audio: {str(e)}")
+    
     def _detect_source_type(self, url: str) -> Optional[SourceType]:
         """Detect source type from URL"""
         url_lower = url.lower()
