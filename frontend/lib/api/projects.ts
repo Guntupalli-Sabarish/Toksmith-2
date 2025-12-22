@@ -58,6 +58,20 @@ export const projectsApi = {
     return response.data;
   },
 
+  generateAudio: async (projectId: string): Promise<Project> => {
+    const response = await apiClient.post<Project>(
+      `/api/v1/projects/${projectId}/generate-audio`
+    );
+    return response.data;
+  },
+
+  generateVideo: async (projectId: string): Promise<Project> => {
+    const response = await apiClient.post<Project>(
+      `/api/v1/projects/${projectId}/generate-video`
+    );
+    return response.data;
+  },
+
   generateFull: async (projectId: string): Promise<Project> => {
     const response = await apiClient.post<Project>(
       `/api/v1/projects/${projectId}/generate`

@@ -43,6 +43,8 @@ export default function ProjectDetailPage({
     deleteProject,
     scrapeContent,
     generateScript,
+    generateAudio,
+    generateVideo,
     generateFull,
   } = useProjectsStore();
 
@@ -91,6 +93,26 @@ export default function ProjectDetailPage({
       setActiveTab("script");
     } catch {
       toast.error("Failed to generate script");
+    }
+  };
+
+  const handleGenerateAudio = async () => {
+    try {
+      await generateAudio(id);
+      toast.success("Audio generated successfully");
+      setActiveTab("output");
+    } catch {
+      toast.error("Failed to generate audio");
+    }
+  };
+
+  const handleGenerateVideo = async () => {
+    try {
+      await generateVideo(id);
+      toast.success("Video generated successfully");
+      setActiveTab("output");
+    } catch {
+      toast.error("Failed to generate video");
     }
   };
 
@@ -186,6 +208,8 @@ export default function ProjectDetailPage({
             isGenerating={isGenerating}
             onScrape={handleScrape}
             onGenerateScript={handleGenerateScript}
+            onGenerateAudio={handleGenerateAudio}
+            onGenerateVideo={handleGenerateVideo}
             onGenerateFull={handleGenerateFull}
           />
         </div>

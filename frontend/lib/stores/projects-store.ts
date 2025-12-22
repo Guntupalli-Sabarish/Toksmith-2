@@ -25,6 +25,8 @@ interface ProjectsState {
   deleteProject: (id: string) => Promise<void>;
   scrapeContent: (id: string) => Promise<void>;
   generateScript: (id: string) => Promise<void>;
+  generateAudio: (id: string) => Promise<void>;
+  generateVideo: (id: string) => Promise<void>;
   generateFull: (id: string) => Promise<void>;
   setCurrentProject: (project: Project | null) => void;
   clearError: () => void;
@@ -139,6 +141,38 @@ export const useProjectsStore = create<ProjectsState>()((set, get) => ({
     set({ isGenerating: true, error: null });
     try {
       const project = await projectsApi.generateScript(id);
+      set((state) => ({
+        projects: state.projects.map((p) => (p.id === id ? project : p)),
+        currentProject:
+          state.currentProject?.id === id ? project : state.currentProject,
+        isGenerating: false,
+      }));
+    } catch (error) {
+      set({ error: getErrorMessage(error), isGenerating: false });
+      throw error;
+    }
+  },
+
+  generateAudio: async (id: string) => {
+    set({ isGenerating: true, error: null });
+    try {
+      const project = await projectsApi.generateAudio(id);
+      set((state) => ({
+        projects: state.projects.map((p) => (p.id === id ? project : p)),
+        currentProject:
+          state.currentProject?.id === id ? project : state.currentProject,
+        isGenerating: false,
+      }));
+    } catch (error) {
+      set({ error: getErrorMessage(error), isGenerating: false });
+      throw error;
+    }
+  },
+
+  generateVideo: async (id: string) => {
+    set({ isGenerating: true, error: null });
+    try {
+      const project = await projectsApi.generateVideo(id);
       set((state) => ({
         projects: state.projects.map((p) => (p.id === id ? project : p)),
         currentProject:
