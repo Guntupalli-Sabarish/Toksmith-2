@@ -203,7 +203,12 @@ export default function ProjectDetailPage({
             status={project.status}
             hasScrapedData={!!project.scraped_data}
             hasScriptData={!!project.script_data}
-            hasAudioUrl={!!project.audio_url}
+            hasAudioGenerated={
+              project.status === "audio_generated" ||
+              project.status === "video_generated" ||
+              project.status === "completed" ||
+              !!project.audio_url
+            }
             hasVideoUrl={!!project.video_url}
             isGenerating={isGenerating}
             onScrape={handleScrape}

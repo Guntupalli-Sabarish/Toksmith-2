@@ -32,7 +32,7 @@ interface GenerationWorkflowProps {
   status: string;
   hasScrapedData: boolean;
   hasScriptData: boolean;
-  hasAudioUrl: boolean;
+  hasAudioGenerated: boolean;
   hasVideoUrl: boolean;
   isGenerating: boolean;
   onScrape: () => void;
@@ -46,7 +46,7 @@ export function GenerationWorkflow({
   status,
   hasScrapedData,
   hasScriptData,
-  hasAudioUrl,
+  hasAudioGenerated,
   hasVideoUrl,
   isGenerating,
   onScrape,
@@ -81,8 +81,8 @@ export function GenerationWorkflow({
       label: "Generate Audio",
       description: "Convert script to speech",
       icon: Mic,
-      isComplete: hasAudioUrl,
-      isActive: hasScriptData && !hasAudioUrl && status !== "failed",
+      isComplete: hasAudioGenerated,
+      isActive: hasScriptData && !hasAudioGenerated && status !== "failed",
       isDisabled: !hasScriptData,
       action: onGenerateAudio,
     },
@@ -92,8 +92,8 @@ export function GenerationWorkflow({
       description: "Create final video output",
       icon: Video,
       isComplete: hasVideoUrl,
-      isActive: hasAudioUrl && !hasVideoUrl && status !== "failed",
-      isDisabled: !hasAudioUrl,
+      isActive: hasAudioGenerated && !hasVideoUrl && status !== "failed",
+      isDisabled: !hasAudioGenerated,
       action: onGenerateVideo,
     },
   ];
