@@ -1,4 +1,5 @@
 # ToksMith — Input Layer (Mini-MVP)
+
 This repository contains the Input Layer for ToksMith: a small FastAPI service that accepts a pasted URL or a script, infers the source (Reddit / Twitter(X) / StackOverflow), validates it, persists a short-lived job record, and enqueues a Celery task to scrape/process the content.
 
 This project is intentionally minimal: it focuses on accepting URL input, routing requests to the appropriate scraper, storing temporary data in the database, and handing jobs off to Celery for further processing (LLM/TTS/video steps are out of scope here).
@@ -22,16 +23,20 @@ This project is intentionally minimal: it focuses on accepting URL input, routin
 * src/database.py — SQLAlchemy model for scrape_jobs
 
 ## Quickstart (local, Windows / PowerShell)
-Prerequisites:
+
+### Prerequisites:
 * Python 3.10+ (project uses modern typing)
 * Redis (or another broker supported by Celery) reachable by REDIS_URL
 * A SQL database (Postgres recommended) reachable by DATABASE_URL
 
 1. Install dependencies (create a virtualenv first if desired):
+   ```powershell
    cd 'e:/Toksmith Project'
    python -m pip install -r requirements.txt
+   ```
 
 2. Configure environment variables (example):
+   ```powershell
    # $env:DATABASE_URL = 'postgresql://user:pass@localhost:5432/toksmith'
    # $env:REDIS_URL = 'redis://localhost:6379/0'
    # $env:API_HOST = '127.0.0.1'
@@ -41,17 +46,23 @@ Prerequisites:
    # $env:REDDIT_CLIENT_SECRET = '...'
    # $env:REDDIT_USER_AGENT = 'toksmith/0.1'
    # $env:TWITTER_BEARER_TOKEN = '...'
+   ```
 
 3. Initialize DB (the app attempts to create tables on startup; you can also run src.database.init_db() manually).
 
 4. Start the API server:
+   ```powershell
    python -m uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
+   ```
 
 5. Start a Celery worker in another shell:
+   ```powershell
    cd 'e:/Toksmith Project'
    celery -A src.celery_app.celery_app worker --loglevel=info
+   ```
 
 ## API (basic)
+
 **POST /api/v1/input/scrape**
 * Body: JSON with either url (HttpUrl) or script (string). source is optional.
 * If source omitted, the server will attempt to infer it from url.
@@ -65,13 +76,17 @@ Prerequisites:
 **GET /api/v1/input/sources**
 
 ### Example (PowerShell):
+```powershell
 # $body = @{ url = 'https://www.reddit.com/r/programming/comments/abcd1234/example' } | ConvertTo-Json
 # Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/v1/input/scrape' -Method Post -ContentType 'application/json' -Body $body
+```
 
 ### Example (curl):
+```bash
 curl -X POST http://127.0.0.1:8000/api/v1/input/scrape \
   -H 'Content-Type: application/json' \
   -d '{"url":"https://www.reddit.com/r/programming/comments/abcd1234/example"}'
+```
 
 ## Configuration
 The service reads configuration from src/config.py (environment variables). Key variables to set:
