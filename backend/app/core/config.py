@@ -31,6 +31,7 @@ class Settings:
     twitter_api_secret: str = os.getenv("TWITTER_API_SECRET", "")
     twitter_access_token: str = os.getenv("TWITTER_ACCESS_TOKEN", "")
     twitter_access_secret: str = os.getenv("TWITTER_ACCESS_SECRET", "")
+    twitter_bearer_token: str = os.getenv("TWITTER_BEARER_TOKEN", "")
 
     # Gemini
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
