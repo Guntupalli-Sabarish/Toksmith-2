@@ -1,0 +1,5 @@
+2026-01-16 15:28:46 | INFO     | app.main:lifespan - Starting TokSmith API...
+2026-01-16 15:28:46 | INFO     | app.main:lifespan - Environment: development
+2026-01-16 15:28:46 | INFO     | app.main:lifespan - Log Level: INFO
+2026-01-16 15:28:46 | INFO     | app.core.supabase:get_client - Supabase client initialized
+2026-01-16 15:28:46 | INFO     | app.main:lifespan - Supabase client initialized successfully
